@@ -1,0 +1,17 @@
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\App.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\engine\FunctionEvaluator.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\engine\IntersectionFinder.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\engine\RevolutionMeshBuilder.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\engine\Validator.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\engine\VolumeCalculator.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\export\DataExporter.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\export\ImageExporter.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\Launcher.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\model\Eje.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\model\Metodo.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\model\PresetConfig.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\model\Presets.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\ui\AccumCanvas.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\ui\MainView.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\ui\Region2DCanvas.java
+C:\Users\Usuario\Desktop\proyecto-calculo\java-simulador\src\main\java\com\umg\calculo\ui\Solid3DView.java

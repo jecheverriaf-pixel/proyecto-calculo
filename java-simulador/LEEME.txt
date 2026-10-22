@@ -1,0 +1,31 @@
+EMULADOR DE SÓLIDOS DE REVOLUCIÓN — Cálculo II, UMG
+===================================================
+
+CÓMO ABRIRLO (Windows, no hay que instalar nada ni tener Java)
+
+1. Si lo recibió como SimuladorSolidos.zip: clic derecho sobre el .zip
+   -> "Extraer todo..." -> Extraer.
+   (No lo abra desde dentro del .zip: debe extraerlo primero.)
+
+2. Entre a la carpeta SimuladorSolidos y haga doble clic en
+   SimuladorSolidos.exe
+
+3. Si Windows muestra "Windows protegió su PC":
+   clic en "Más información" -> "Ejecutar de todas formas".
+   (Aparece porque el programa no tiene firma digital; es normal.)
+
+IMPORTANTE: no saque SimuladorSolidos.exe de la carpeta. Necesita las
+carpetas "app" y "runtime" que están a su lado. Si quiere un acceso
+directo en el escritorio: clic derecho sobre SimuladorSolidos.exe ->
+"Enviar a" -> "Escritorio (crear acceso directo)".
+
+USO RÁPIDO
+
+- Los botones de arriba cargan el ejercicio principal y las 3
+  configuraciones de validación.
+- Escriba f(x), g(x), a y b, elija el método y el eje: el volumen y las
+  gráficas se actualizan solos.
+- "Calcular intersecciones" encuentra a y b automáticamente.
+- En la vista 3D: arrastre para rotar, rueda del mouse para zoom,
+  "Vista: Sólido / Malla", "Corte por la mitad" y "Animar generación".
+- "Exportar CSV / TXT / gráficas PNG" guarda los datos y las figuras.

@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emulador de Volúmenes de Sólidos de Revolución - Cálculo II</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Compiler -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Math.js for parsing custom mathematical functions -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+  <!-- Plotly.js for interactive 2D graphics (region plot, accumulated volume plot) -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <!-- Three.js for the 3D solid of revolution (real-time WebGL, needed for a
+       smooth sweep animation — Plotly's gl3d surfaces cannot animate smoothly) -->
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- KaTeX for rendering math formulas -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Light theme overrides, toggled via html.theme-light */
+    html.theme-light body {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+    }
+    html.theme-light .glass-card {
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+    html.theme-light ::-webkit-scrollbar-track { background: #e2e8f0; }
+    html.theme-light ::-webkit-scrollbar-thumb { background: #94a3b8; }
+    html.theme-light .bg-slate-950 { background-color: #ffffff !important; }
+    html.theme-light .bg-slate-900 { background-color: #f1f5f9 !important; }
+    html.theme-light .bg-slate-900\/60 { background-color: rgba(241,245,249,0.8) !important; }
+    html.theme-light .bg-slate-900\/90 { background-color: rgba(241,245,249,0.9) !important; }
+    html.theme-light .bg-slate-800 { background-color: #e2e8f0 !important; }
+    html.theme-light .bg-slate-800\/80 { background-color: rgba(226,232,240,0.8) !important; }
+    html.theme-light .bg-slate-800\/30:hover { background-color: rgba(226,232,240,0.5) !important; }
+    html.theme-light .hover\:bg-slate-800\/30:hover { background-color: rgba(226,232,240,0.5) !important; }
+    html.theme-light .hover\:bg-slate-700:hover { background-color: #cbd5e1 !important; }
+    html.theme-light .border-slate-800 { border-color: #cbd5e1 !important; }
+    html.theme-light .border-slate-700 { border-color: #cbd5e1 !important; }
+    html.theme-light .border-slate-700\/60 { border-color: rgba(203,213,225,0.8) !important; }
+    html.theme-light .text-slate-100 { color: #0f172a !important; }
+    html.theme-light .text-slate-200 { color: #1e293b !important; }
+    html.theme-light .text-slate-300 { color: #334155 !important; }
+    html.theme-light .text-slate-400 { color: #64748b !important; }
+    html.theme-light .text-slate-500 { color: #94a3b8 !important; }
+    html.theme-light .text-slate-600 { color: #94a3b8 !important; }
+    html.theme-light .text-white { color: #0f172a !important; }
+    html.theme-light .divide-slate-800\/60 > * + * { border-color: rgba(203,213,225,0.6) !important; }
+
+    /* Accent colors (indigo/sky/emerald/amber/rose) are tuned as light pastel
+       shades for contrast against the dark background — on white they're
+       nearly invisible, so every text-* use of these needs a darker
+       light-mode equivalent. */
+    html.theme-light .text-indigo-200,
+    html.theme-light .text-indigo-300 { color: #4338ca !important; }
+    html.theme-light .text-indigo-400 { color: #3730a3 !important; }
+    html.theme-light .text-sky-300 { color: #0369a1 !important; }
+    html.theme-light .text-sky-400 { color: #075985 !important; }
+    html.theme-light .text-emerald-200,
+    html.theme-light .text-emerald-300 { color: #047857 !important; }
+    html.theme-light .text-emerald-400 { color: #065f46 !important; }
+    html.theme-light .text-amber-200,
+    html.theme-light .text-amber-300 { color: #b45309 !important; }
+    html.theme-light .text-amber-400 { color: #92400e !important; }
+    html.theme-light .text-rose-200,
+    html.theme-light .text-rose-300 { color: #be123c !important; }
+    html.theme-light .text-rose-400 { color: #9f1239 !important; }
+    html.theme-light .hover\:text-amber-300:hover { color: #b45309 !important; }
+    html.theme-light .hover\:text-slate-200:hover { color: #1e293b !important; }
+
+    /* Header title gradient: recolor with darker stops instead of the
+       dark-mode pastel gradient, which washes out on a white background */
+    html.theme-light .app-title-gradient {
+      background-image: linear-gradient(to right, #4338ca, #0369a1, #047857) !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // Presets from assignment specifications
+    const PRESETS = [
+      {
+        id: 'main_project',
+        name: 'Ejercicio Principal Proyecto (Arandelas - Eje X)',
+        f: 'x + 3',
+        g: 'x^2 + 1',
+        a: -1,
+        b: 2,
+        metodo: 'arandelas',
+        eje: 'X',
+        manualVol: 73.5133,
+        description: 'Sólido generado al girar y = x^2 + 1 e y = x + 3 en el intervalo de intersección [-1, 2] alrededor del eje X.'
+      },
+      {
+        id: 'config_1',
+        name: 'Configuración 1 (Discos - Eje X)',
+        f: 'sqrt(x)',
+        g: '0',
+        a: 0,
+        b: 4,
+        metodo: 'discos',
+        eje: 'X',
+        manualVol: 25.1327, // pi * [x^2/2]_0^4 = 8*pi = 25.13274...
+        description: 'f(x) = sqrt(x), g(x) = 0 en [0, 4] rotado en Eje X.'
+      },
+      {
+        id: 'config_2',
+        name: 'Configuración 2 (Arandelas - Eje X)',
+        f: 'sqrt(x)',
+        g: 'x^2',
+        a: 0,
+        b: 1,
+        metodo: 'arandelas',
+        eje: 'X',
+        manualVol: 0.9425, // pi * int_0^1 (x - x^4) dx = 0.3*pi = 0.942477...
+        description: 'f(x) = sqrt(x), g(x) = x^2 en [0, 1] rotado en Eje X.'
+      },
+      {
+        id: 'config_3',
+        name: 'Configuración 3 (Capas Cilíndricas - Eje Y)',
+        f: '2*x',
+        g: 'x^2',
+        a: 0,
+        b: 2,
+        metodo: 'capas',
+        eje: 'Y',
+        manualVol: 8.3776, // 2*pi * int_0^2 x*(2x - x^2) dx = 2*pi*(4/3) = 8*pi/3 = 8.37758...
+        description: 'f(x) = 2x, g(x) = x^2 en [0, 2] rotado en Eje Y.'
+      }
+    ];
+
+    // Renders a LaTeX string via KaTeX; falls back to plain text if it fails
+    function Tex({ math: expr, display = false }) {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (ref.current && window.katex) {
+          try {
+            window.katex.render(expr, ref.current, { throwOnError: false, displayMode: display });
+          } catch (e) {
+            ref.current.textContent = expr;
+          }
+        }
+      }, [expr, display]);
+      return display ? <div ref={ref} className="overflow-x-auto" /> : <span ref={ref} />;
+    }
+
+    // Numerical Integration using Simpson's 1/3 Rule
+    function simpsonIntegrate(fn, a, b, n = 600) {
+      if (a >= b) return 0;
+      if (n % 2 !== 0) n++;
+      const h = (b - a) / n;
+      let sum = fn(a) + fn(b);
+
+      for (let i = 1; i < n; i++) {
+        const x = a + i * h;
+        const coef = (i % 2 === 0) ? 2 : 4;
+        sum += coef * fn(x);
+      }
+      return (h / 3) * sum;
+    }
+
+    // Builds the volume integrand for the given method, shared by the main
+    // calculation, the slice slider, and the validation table
+    function buildIntegrand(evalF, evalG, metodo) {
+      if (metodo === 'discos') {
+        return (x) => Math.PI * Math.pow(evalF(x), 2);
+      } else if (metodo === 'arandelas') {
+        return (x) => Math.PI * (Math.pow(evalF(x), 2) - Math.pow(evalG(x), 2));
+      }
+      return (x) => 2 * Math.PI * x * (evalF(x) - evalG(x));
+    }
+
+    function App() {
+      // Input states
+      const [fStr, setFStr] = useState(PRESETS[0].f);
+      const [gStr, setGStr] = useState(PRESETS[0].g);
+      const [aInput, setAInput] = useState(PRESETS[0].a);
+      const [bInput, setBInput] = useState(PRESETS[0].b);
+      const [metodo, setMetodo] = useState(PRESETS[0].metodo); // discos, arandelas, capas
+      const [eje, setEje] = useState(PRESETS[0].eje); // X or Y
+      const [manualVol, setManualVol] = useState(PRESETS[0].manualVol);
+      const [activeTab, setActiveTab] = useState('emulator'); // emulator, theory, validation
+      const [theme, setTheme] = useState('dark'); // dark, light
+
+      // Interactive cross-section slider + solid-sweep animation state
+      const [showSlice, setShowSlice] = useState(true);
+      const [sliceX, setSliceX] = useState(null);
+      const [isAnimating, setIsAnimating] = useState(false);
+
+      // Refs holding the latest evaluated functions/domain so the slice slider
+      // and sweep animation can redraw the plots without re-running the full
+      // validation + integration pipeline on every drag tick
+      const evalFRef = useRef(() => 0);
+      const evalGRef = useRef(() => 0);
+      const domainRef = useRef({ a: 0, b: 0 });
+      const metodoRef = useRef('arandelas');
+      const ejeRef = useRef('X');
+      const sweepRafRef = useRef(null);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('theme-light', theme === 'light');
+      }, [theme]);
+
+      useEffect(() => {
+        return () => { if (sweepRafRef.current) sweepRafRef.current.cancel(); };
+      }, []);
+
+      // Computed & Validation states
+      const [errors, setErrors] = useState([]);
+      const [calculatedVol, setCalculatedVol] = useState(null);
+      const [sampleData, setSampleData] = useState([]);
+      const [selectedPreset, setSelectedPreset] = useState('main_project');
+
+      // Plot references
+      const plot2DRef = useRef(null);
+      const plot3DRef = useRef(null); // mount point for the three.js canvas
+      const plotAccumRef = useRef(null);
+      const threeRef = useRef(null); // persistent three.js scene/renderer/mesh objects
+
+      // Initialize the three.js scene once on mount: renderer, camera, lights,
+      // placeholder mesh, a lightweight custom orbit control (drag to rotate,
+      // wheel to zoom — no external OrbitControls dependency needed), resize
+      // handling, and a persistent render loop.
+      useEffect(() => {
+        const container = plot3DRef.current;
+        if (!container || !window.THREE) return;
+
+        const THREE = window.THREE;
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+        renderer.domElement.style.display = 'block';
+        renderer.domElement.style.cursor = 'grab';
+        renderer.domElement.style.touchAction = 'none';
+
+        // Cartesian reference "cage" (like Plotly/matplotlib 3D axes): colored
+        // XYZ axes (three.js convention: X=red, Y=green, Z=blue), a grid on
+        // the floor and two back walls, and a wireframe bounding box — all
+        // rescaled to the solid's size in updateSolid3D so it always frames it.
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
+        const gridMat = () => ({ transparent: true, opacity: 0.35 });
+        const gridHelper = new THREE.GridHelper(10, 10, 0x64748b, 0x334155); // floor (XZ)
+        Object.assign(gridHelper.material, gridMat());
+        scene.add(gridHelper);
+        const wallBack = new THREE.GridHelper(10, 10, 0x64748b, 0x334155); // back wall (XY, facing +Z)
+        wallBack.rotation.x = Math.PI / 2;
+        Object.assign(wallBack.material, gridMat());
+        scene.add(wallBack);
+        const wallSide = new THREE.GridHelper(10, 10, 0x64748b, 0x334155); // side wall (YZ, facing +X)
+        wallSide.rotation.z = Math.PI / 2;
+        Object.assign(wallSide.material, gridMat());
+        scene.add(wallSide);
+
+        const cageEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1));
+        const cage = new THREE.LineSegments(cageEdges, new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.55 }));
+        scene.add(cage);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        keyLight.position.set(6, 10, 8);
+        scene.add(keyLight);
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+        fillLight.position.set(-6, -4, -6);
+        scene.add(fillLight);
+
+        const material = new THREE.MeshStandardMaterial({
+          vertexColors: true, side: THREE.DoubleSide, roughness: 0.45, metalness: 0.05,
+          transparent: true, opacity: 0.94
+        });
+        const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+        scene.add(mesh);
+
+        const sliceMaterial = new THREE.MeshStandardMaterial({
+          color: 0xfbbf24, side: THREE.DoubleSide, roughness: 0.3, emissive: 0x442200, emissiveIntensity: 0.3
+        });
+        const sliceMesh = new THREE.Mesh(new THREE.BufferGeometry(), sliceMaterial);
+        sliceMesh.visible = false;
+        scene.add(sliceMesh);
+
+        const axisGeom = new THREE.BufferGeometry();
+        axisGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+        const axisLine = new THREE.Line(axisGeom, new THREE.LineBasicMaterial({ color: 0xf59e0b, linewidth: 2 }));
+        scene.add(axisLine);
+
+        // Custom orbit control: spherical coordinates around the origin
+        const camState = { theta: 0.9, phi: 1.0, radius: 8 };
+        const updateCamera = () => {
+          const { theta, phi, radius } = camState;
+          camera.position.set(
+            radius * Math.sin(phi) * Math.cos(theta),
+            radius * Math.cos(phi),
+            radius * Math.sin(phi) * Math.sin(theta)
+          );
+          camera.lookAt(0, 0, 0);
+        };
+        updateCamera();
+
+        let dragging = false, lastX = 0, lastY = 0;
+        const onPointerDown = (e) => {
+          dragging = true; lastX = e.clientX; lastY = e.clientY;
+          renderer.domElement.style.cursor = 'grabbing';
+          try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) {}
+          e.preventDefault();
+        };
+        const onPointerUp = () => { dragging = false; renderer.domElement.style.cursor = 'grab'; };
+        const onPointerMove = (e) => {
+          if (!dragging) return;
+          const dx = e.clientX - lastX, dy = e.clientY - lastY;
+          lastX = e.clientX; lastY = e.clientY;
+          camState.theta -= dx * 0.008;
+          camState.phi = Math.max(0.15, Math.min(Math.PI - 0.15, camState.phi - dy * 0.008));
+          updateCamera();
+        };
+        const onWheel = (e) => {
+          e.preventDefault();
+          camState.radius = Math.max(2, Math.min(60, camState.radius * (1 + e.deltaY * 0.0012)));
+          updateCamera();
+        };
+        renderer.domElement.addEventListener('pointerdown', onPointerDown);
+        renderer.domElement.addEventListener('pointerup', onPointerUp);
+        renderer.domElement.addEventListener('pointercancel', onPointerUp);
+        renderer.domElement.addEventListener('pointermove', onPointerMove);
+        renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+
+        const resize = () => {
+          const w = container.clientWidth, h = container.clientHeight;
+          if (w === 0 || h === 0) return;
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        };
+        resize();
+        const resizeObserver = new ResizeObserver(resize);
+        resizeObserver.observe(container);
+
+        let rafId;
+        const loop = () => {
+          renderer.render(scene, camera);
+          rafId = requestAnimationFrame(loop);
+        };
+        rafId = requestAnimationFrame(loop);
+
+        threeRef.current = {
+          THREE, scene, camera, renderer, mesh, sliceMesh, axisLine,
+          axesHelper, gridHelper, wallBack, wallSide, cage,
+          camState, updateCamera
+        };
+
+        return () => {
+          cancelAnimationFrame(rafId);
+          resizeObserver.disconnect();
+          renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+          renderer.domElement.removeEventListener('pointerup', onPointerUp);
+          renderer.domElement.removeEventListener('pointercancel', onPointerUp);
+          renderer.domElement.removeEventListener('pointermove', onPointerMove);
+          renderer.domElement.removeEventListener('wheel', onWheel);
+          mesh.geometry.dispose();
+          sliceMesh.geometry.dispose();
+          material.dispose();
+          sliceMaterial.dispose();
+          gridHelper.geometry.dispose(); gridHelper.material.dispose();
+          wallBack.geometry.dispose(); wallBack.material.dispose();
+          wallSide.geometry.dispose(); wallSide.material.dispose();
+          cage.geometry.dispose(); cage.material.dispose();
+          renderer.dispose();
+          if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
+          threeRef.current = null;
+        };
+      }, []);
+
+      // Builds the closed 2D profile (radius, height) that, revolved, produces
+      // the exact solid — including end caps/walls in one continuous mesh.
+      // X-axis (discos/arandelas): radius = curve value, height = x.
+      // Y-axis (capas): radius = x, height = curve value.
+      // Also returns which curve (f or g) each point belongs to, so coloring
+      // can match f=blue/g=rose exactly as in the 2D plot — the array
+      // position alone doesn't reliably tell you that (it's reversed for the
+      // Y-axis/capas case, since the profile there traces g forward first).
+      const buildRevolutionProfile = (evalF, evalG, a, b, metodo, eje) => {
+        const THREE = window.THREE;
+        const N = 60;
+        const pts = [];
+        const phases = [];
+        if (eje === 'X') {
+          const rOuter = (x) => Math.max(0, evalF(x));
+          const rInner = (x) => metodo === 'arandelas' ? Math.max(0, evalG(x)) : 0;
+          pts.push(new THREE.Vector2(rInner(a), a)); phases.push('g');
+          pts.push(new THREE.Vector2(rOuter(a), a)); phases.push('f');
+          for (let i = 1; i <= N; i++) {
+            const x = a + (i / N) * (b - a);
+            pts.push(new THREE.Vector2(rOuter(x), x)); phases.push('f');
+          }
+          pts.push(new THREE.Vector2(rInner(b), b)); phases.push('g');
+          for (let i = N - 1; i >= 1; i--) {
+            const x = a + (i / N) * (b - a);
+            pts.push(new THREE.Vector2(rInner(x), x)); phases.push('g');
+          }
+        } else {
+          for (let i = 0; i <= N; i++) {
+            const x = a + (i / N) * (b - a);
+            pts.push(new THREE.Vector2(x, evalG(x))); phases.push('g');
+          }
+          pts.push(new THREE.Vector2(b, evalF(b))); phases.push('f');
+          for (let i = N - 1; i >= 1; i--) {
+            const x = a + (i / N) * (b - a);
+            pts.push(new THREE.Vector2(x, evalF(x))); phases.push('f');
+          }
+          pts.push(new THREE.Vector2(a, evalF(a))); phases.push('f');
+        }
+        return { points: pts, phases };
+      };
+
+      // Rebuilds the three.js geometry/colors/highlight for the current
+      // parameters. Cheap enough to call every animation frame (unlike Plotly's
+      // gl3d surfaces), which is what makes the sweep animation actually smooth.
+      const updateSolid3D = (evalF, evalG, a, b, metodo, eje, sliceX, sweepFraction = 1) => {
+        const three = threeRef.current;
+        if (!three) return;
+        const { THREE, mesh, sliceMesh, axisLine } = three;
+
+        const { points: pts, phases } = buildRevolutionProfile(evalF, evalG, a, b, metodo, eje);
+        const radialSegments = 56;
+        const phiLength = 2 * Math.PI * Math.max(0.001, Math.min(1, sweepFraction));
+        const geometry = new THREE.LatheGeometry(pts, radialSegments, 0, phiLength);
+
+        // Vertex coloring matching the 2D plot exactly: f(x) = sky blue,
+        // g(x) = rose — using the real per-point curve identity (phases),
+        // not array position (which curve comes "first" flips between the
+        // X-axis and Y-axis profile constructions).
+        const n = pts.length;
+        const blue = new THREE.Color(0x38bdf8);
+        const rose = new THREE.Color(0xf43f5e);
+        const perPointColor = new Float32Array(n * 3);
+        for (let j = 0; j < n; j++) {
+          const color = phases[j] === 'f' ? blue : rose;
+          perPointColor[j * 3] = color.r;
+          perPointColor[j * 3 + 1] = color.g;
+          perPointColor[j * 3 + 2] = color.b;
+        }
+        const posCount = geometry.attributes.position.count;
+        const colors = new Float32Array(posCount * 3);
+        for (let v = 0; v < posCount; v++) {
+          const j = v % n;
+          colors[v * 3] = perPointColor[j * 3];
+          colors[v * 3 + 1] = perPointColor[j * 3 + 1];
+          colors[v * 3 + 2] = perPointColor[j * 3 + 2];
+        }
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        // Center the solid on the world origin along its height axis (three's
+        // Y). The camera always orbits (0,0,0); if the solid's actual height
+        // range [a,b] isn't centered there (e.g. [0,4]), the camera ends up
+        // orbiting empty space next to the object instead of the object
+        // itself — that's what made rotation look unresponsive and framing
+        // look like an extreme, broken zoom. Radius/X/Z are already naturally
+        // centered by the revolution itself, so only Y needs correcting.
+        geometry.computeBoundingSphere();
+        const centerY = geometry.boundingSphere ? geometry.boundingSphere.center.y : 0;
+        const fitRadius = geometry.boundingSphere ? geometry.boundingSphere.radius : 3;
+        geometry.translate(0, -centerY, 0);
+
+        mesh.geometry.dispose();
+        mesh.geometry = geometry;
+
+        // Auto-frame the camera the first time a solid loads, or when it
+        // changes to a meaningfully different size. Skipped entirely while
+        // the sweep animation is mid-flight so the camera never jumps/zooms
+        // during playback.
+        if (sweepFraction > 0.999 && (!three.hasFit || Math.abs(fitRadius - three.lastFitRadius) / fitRadius > 0.5)) {
+          three.camState.radius = Math.max(3, fitRadius * 2.6);
+          three.hasFit = true;
+          three.lastFitRadius = fitRadius;
+          three.updateCamera();
+        }
+        if (three.axesHelper) {
+          const helperScale = fitRadius / 5;
+          three.axesHelper.scale.setScalar(helperScale);
+          three.gridHelper.scale.setScalar(helperScale);
+          three.gridHelper.position.set(0, -fitRadius, 0);
+          three.wallBack.scale.setScalar(helperScale);
+          three.wallBack.position.set(0, 0, -fitRadius);
+          three.wallSide.scale.setScalar(helperScale);
+          three.wallSide.position.set(-fitRadius, 0, 0);
+          three.cage.scale.setScalar(fitRadius * 2);
+        }
+
+        // Rotation axis line, spanning a bit beyond the solid. Sized from the
+        // geometry's own fitRadius (not raw a/b) because for capas (eje Y),
+        // a/b are RADIUS bounds, not height bounds — using them directly here
+        // would draw the axis with the wrong length/scale for that method.
+        // The mesh is already centered at y=0 above, so the line is too.
+        const axisPos = axisLine.geometry.attributes.position.array;
+        const axisSpan = fitRadius * 1.3 + 0.5;
+        axisPos[0] = 0; axisPos[1] = -axisSpan; axisPos[2] = 0;
+        axisPos[3] = 0; axisPos[4] = axisSpan; axisPos[5] = 0;
+        axisLine.geometry.attributes.position.needsUpdate = true;
+        axisLine.geometry.computeBoundingSphere();
+
+        // Cross-section highlight at the slider position (only once settled)
+        const showHighlight = sliceX !== null && sliceX >= a && sliceX <= b && sweepFraction > 0.999;
+        if (showHighlight) {
+          sliceMesh.geometry.dispose();
+          if (eje === 'X') {
+            const rOuter = Math.max(0, evalF(sliceX));
+            const rInner = metodo === 'arandelas' ? Math.max(0, evalG(sliceX)) : 0;
+            const ring = new THREE.RingGeometry(rInner, Math.max(rOuter, rInner + 0.001), 56, 1);
+            ring.rotateX(-Math.PI / 2);
+            ring.translate(0, sliceX - centerY, 0);
+            sliceMesh.geometry = ring;
+          } else {
+            const yLow = Math.min(evalF(sliceX), evalG(sliceX));
+            const yHigh = Math.max(evalF(sliceX), evalG(sliceX));
+            const height = Math.max(yHigh - yLow, 0.001);
+            const cyl = new THREE.CylinderGeometry(sliceX, sliceX, height, 56, 1, true);
+            cyl.translate(0, yLow + height / 2 - centerY, 0);
+            sliceMesh.geometry = cyl;
+          }
+          sliceMesh.visible = true;
+        } else {
+          sliceMesh.visible = false;
+        }
+      };
+
+      // Auto adjust axis rule based on method
+      const handleMethodChange = (newMethod) => {
+        setMetodo(newMethod);
+        if (newMethod === 'discos' || newMethod === 'arandelas') {
+          setEje('X');
+        } else if (newMethod === 'capas') {
+          setEje('Y');
+        }
+      };
+
+      // Apply Preset selector
+      const applyPreset = (presetId) => {
+        const found = PRESETS.find(p => p.id === presetId);
+        if (found) {
+          setSelectedPreset(presetId);
+          setFStr(found.f);
+          setGStr(found.g);
+          setAInput(found.a);
+          setBInput(found.b);
+          setMetodo(found.metodo);
+          setEje(found.eje);
+          setManualVol(found.manualVol);
+        }
+      };
+
+      // Main calculation & validation effect
+      useEffect(() => {
+        const newErrors = [];
+        const a = parseFloat(aInput);
+        const b = parseFloat(bInput);
+
+        // Basic numeric check
+        if (isNaN(a) || isNaN(b)) {
+          newErrors.push('Los límites de integración a y b deben ser números válidos.');
+        } else if (a >= b) {
+          newErrors.push('Debe cumplirse que a < b.');
+        }
+
+        // Method-Axis compatibility rules
+        if ((metodo === 'discos' || metodo === 'arandelas') && eje !== 'X') {
+          newErrors.push('Los métodos de discos y arandelas deben ser alrededor del eje X.');
+        }
+        if (metodo === 'capas' && eje !== 'Y') {
+          newErrors.push('El método de capas cilíndricas debe ser alrededor del eje Y.');
+        }
+        if (metodo === 'capas' && a < 0) {
+          newErrors.push('Para capas cilíndricas alrededor del eje Y debe cumplirse 0 <= a < b.');
+        }
+
+        // Compile Math functions safely
+        let compiledF = null;
+        let compiledG = null;
+
+        try {
+          compiledF = math.compile(fStr);
+        } catch (err) {
+          newErrors.push('Error de sintaxis en la función f(x).');
+        }
+
+        try {
+          compiledG = math.compile(gStr);
+        } catch (err) {
+          newErrors.push('Error de sintaxis en la función g(x).');
+        }
+
+        let evalF = (xVal) => 0;
+        let evalG = (xVal) => 0;
+
+        if (compiledF && compiledG && !isNaN(a) && !isNaN(b) && a < b) {
+          evalF = (xVal) => {
+            try { return compiledF.evaluate({ x: xVal }); }
+            catch (e) { return NaN; }
+          };
+          evalG = (xVal) => {
+            try { return compiledG.evaluate({ x: xVal }); }
+            catch (e) { return NaN; }
+          };
+
+          // Test evaluation across domain
+          const steps = 200;
+          const stepSize = (b - a) / steps;
+          let invalidFunc = false;
+          let lowerViolated = false;
+          let negViolated = false;
+
+          for (let i = 0; i <= steps; i++) {
+            const x = a + i * stepSize;
+            const fx = evalF(x);
+            const gx = evalG(x);
+
+            if (isNaN(fx) || isNaN(gx)) {
+              invalidFunc = true;
+              break;
+            }
+            if (fx < gx - 1e-9) {
+              lowerViolated = true;
+            }
+            if ((metodo === 'discos' || metodo === 'arandelas') && gx < -1e-9) {
+              negViolated = true;
+            }
+          }
+
+          if (invalidFunc) {
+            newErrors.push('Las funciones no se pudieron evaluar en todo el intervalo [a, b].');
+          }
+          if (lowerViolated) {
+            newErrors.push('Debe cumplirse f(x) >= g(x) en todo el intervalo [a, b].');
+          }
+          if (negViolated) {
+            newErrors.push('Para discos y arandelas, debe cumplirse f(x) >= g(x) >= 0 en [a, b].');
+          }
+        }
+
+        setErrors(newErrors);
+
+        // If no errors, proceed with volume calculations
+        if (newErrors.length === 0 && compiledF && compiledG) {
+          let integrand = null;
+
+          if (metodo === 'discos') {
+            // V = pi * int_a^b [f(x)]^2 dx
+            integrand = (x) => Math.PI * Math.pow(evalF(x), 2);
+          } else if (metodo === 'arandelas') {
+            // V = pi * int_a^b ([f(x)]^2 - [g(x)]^2) dx
+            integrand = (x) => Math.PI * (Math.pow(evalF(x), 2) - Math.pow(evalG(x), 2));
+          } else if (metodo === 'capas') {
+            // V = 2*pi * int_a^b x * (f(x) - g(x)) dx
+            integrand = (x) => 2 * Math.PI * x * (evalF(x) - evalG(x));
+          }
+
+          const totalVol = simpsonIntegrate(integrand, a, b, 800);
+          setCalculatedVol(totalVol);
+
+          // Generate dataset for graph & export
+          const numPoints = 150;
+          const dx = (b - a) / numPoints;
+          const dataPoints = [];
+
+          for (let i = 0; i <= numPoints; i++) {
+            const currentX = a + i * dx;
+            const fxVal = evalF(currentX);
+            const gxVal = evalG(currentX);
+            const vacumVal = simpsonIntegrate(integrand, a, currentX, 200);
+
+            dataPoints.push({
+              X: Number(currentX.toFixed(4)),
+              f_x: Number(fxVal.toFixed(4)),
+              g_x: Number(gxVal.toFixed(4)),
+              V_acum: Number(vacumVal.toFixed(4))
+            });
+          }
+          setSampleData(dataPoints);
+
+          // Cache evaluators/domain so the slice slider and sweep animation can
+          // redraw plots directly, without re-running this whole pipeline
+          evalFRef.current = evalF;
+          evalGRef.current = evalG;
+          domainRef.current = { a, b };
+          metodoRef.current = metodo;
+          ejeRef.current = eje;
+
+          // Keep the cross-section slider within the current [a, b]; snap it
+          // to the midpoint the first time or whenever the domain shifts past it
+          setSliceX(prev => (prev === null || prev < a || prev > b) ? (a + b) / 2 : prev);
+
+          // Render Plots
+          const sliceActive = showSlice && sliceX !== null && sliceX >= a && sliceX <= b;
+          const sliceInfo = sliceActive ? { x: sliceX, v: simpsonIntegrate(integrand, a, sliceX, 200) } : null;
+          render2DPlot(evalF, evalG, a, b, eje, theme, showSlice ? sliceX : null);
+          updateSolid3D(evalF, evalG, a, b, metodo, eje, showSlice ? sliceX : null, 1);
+          renderAccumPlot(dataPoints, theme, sliceInfo);
+        } else {
+          setCalculatedVol(null);
+        }
+      }, [fStr, gStr, aInput, bInput, metodo, eje, theme]);
+
+      // Lightweight redraw for the cross-section slider: skips validation and
+      // integration, just repositions the highlighted slice in all three plots
+      useEffect(() => {
+        if (errors.length !== 0) return;
+        const { a, b } = domainRef.current;
+        render2DPlot(evalFRef.current, evalGRef.current, a, b, ejeRef.current, theme, showSlice ? sliceX : null);
+        updateSolid3D(evalFRef.current, evalGRef.current, a, b, metodoRef.current, ejeRef.current, showSlice ? sliceX : null, 1);
+        const sliceActive = showSlice && sliceX !== null && sliceX >= a && sliceX <= b;
+        if (sliceActive) {
+          const integrand = buildIntegrand(evalFRef.current, evalGRef.current, metodoRef.current);
+          renderAccumPlot(sampleData, theme, { x: sliceX, v: simpsonIntegrate(integrand, a, sliceX, 200) });
+        } else {
+          renderAccumPlot(sampleData, theme, null);
+        }
+      }, [sliceX, showSlice]);
+
+      // Cross-section info panel: A(x) or dV/dx evaluated live at the slice position
+      const crossSectionInfo = useMemo(() => {
+        if (!showSlice || sliceX === null || errors.length > 0) return null;
+        try {
+          const cf = math.compile(fStr);
+          const cg = math.compile(gStr);
+          const fx = cf.evaluate({ x: sliceX });
+          const gx = cg.evaluate({ x: sliceX });
+          let value, formula;
+          if (metodo === 'discos') {
+            value = Math.PI * Math.pow(fx, 2);
+            formula = `A(x) = \\pi [f(x)]^2 = \\pi(${fx.toFixed(3)})^2 \\approx ${value.toFixed(4)}\\ u^2`;
+          } else if (metodo === 'arandelas') {
+            value = Math.PI * (Math.pow(fx, 2) - Math.pow(gx, 2));
+            formula = `A(x) = \\pi\\left([f(x)]^2-[g(x)]^2\\right) \\approx \\pi\\left(${fx.toFixed(3)}^2-${gx.toFixed(3)}^2\\right) \\approx ${value.toFixed(4)}\\ u^2`;
+          } else {
+            value = 2 * Math.PI * sliceX * (fx - gx);
+            formula = `\\frac{dV}{dx} = 2\\pi x\\,(f(x)-g(x)) \\approx 2\\pi(${sliceX.toFixed(3)})(${fx.toFixed(3)}-${gx.toFixed(3)}) \\approx ${value.toFixed(4)}\\ u^2`;
+          }
+          return { fx, gx, value, formula };
+        } catch (e) {
+          return null;
+        }
+      }, [showSlice, sliceX, fStr, gStr, metodo, errors.length]);
+
+      // Animates the solid sweeping from 0 to a full revolution. Unlike the
+      // old Plotly gl3d approach, rebuilding a LatheGeometry this size costs
+      // well under a millisecond, and three.js already re-renders every frame
+      // via its own loop — so this can just update sweepFraction on real
+      // elapsed time and it plays back smoothly at full frame rate.
+      const runSweepAnimation = () => {
+        if (isAnimating || errors.length > 0) return;
+        setIsAnimating(true);
+        const durationMs = 1800;
+        const t0 = performance.now();
+        let cancelled = false;
+        sweepRafRef.current = { cancel: () => { cancelled = true; } };
+
+        const frame = (now) => {
+          if (cancelled) return;
+          const t = Math.min(1, (now - t0) / durationMs);
+          const eased = 1 - Math.pow(1 - t, 3);
+          updateSolid3D(
+            evalFRef.current, evalGRef.current,
+            domainRef.current.a, domainRef.current.b,
+            metodoRef.current, ejeRef.current,
+            showSlice ? sliceX : null, eased
+          );
+          if (t < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            setIsAnimating(false);
+          }
+        };
+        requestAnimationFrame(frame);
+      };
+
+      const render2DPlot = (evalF, evalG, a, b, rotationAxis, theme, sliceX) => {
+        if (!plot2DRef.current) return;
+        const isLight = theme === 'light';
+        const fontColor = isLight ? '#0f172a' : '#f8fafc';
+        const axisColor = isLight ? '#334155' : '#cbd5e1';
+        const gridColor = isLight ? '#cbd5e1' : '#334155';
+        const zeroColor = isLight ? '#94a3b8' : '#64748b';
+        const plotBg = isLight ? 'rgba(226, 232, 240, 0.5)' : 'rgba(15, 23, 42, 0.6)';
+
+        const N = 200;
+        const xVals = [];
+        const fVals = [];
+        const gVals = [];
+
+        const padding = (b - a) * 0.2 || 1;
+        const plotA = a - padding;
+        const plotB = b + padding;
+        const dx = (plotB - plotA) / N;
+
+        for (let i = 0; i <= N; i++) {
+          const x = plotA + i * dx;
+          xVals.push(x);
+          fVals.push(evalF(x));
+          gVals.push(evalG(x));
+        }
+
+        // Highlight region in [a, b]
+        const regionXVals = [];
+        const regionFVals = [];
+        const regionGVals = [];
+        const regionN = 100;
+        const rDx = (b - a) / regionN;
+
+        for (let i = 0; i <= regionN; i++) {
+          const x = a + i * rDx;
+          regionXVals.push(x);
+          regionFVals.push(evalF(x));
+          regionGVals.push(evalG(x));
+        }
+
+        const traceF = {
+          x: xVals,
+          y: fVals,
+          mode: 'lines',
+          name: 'f(x) - Superior',
+          line: { color: '#38bdf8', width: 3 },
+          hovertemplate: 'f(x)=%{y:.4f}<extra></extra>'
+        };
+
+        const traceG = {
+          x: xVals,
+          y: gVals,
+          mode: 'lines',
+          name: 'g(x) - Inferior',
+          line: { color: '#f43f5e', width: 3 },
+          hovertemplate: 'g(x)=%{y:.4f}<extra></extra>'
+        };
+
+        // Filled area trace (subtle outline added so the region's edge reads
+        // clearly against the background instead of blending into it)
+        const traceRegion = {
+          x: [...regionXVals, ...regionXVals.slice().reverse()],
+          y: [...regionFVals, ...regionGVals.slice().reverse()],
+          fill: 'toself',
+          fillcolor: 'rgba(56, 189, 248, 0.25)',
+          line: { color: 'rgba(56, 189, 248, 0.5)', width: 1 },
+          name: 'Región R',
+          hoverinfo: 'skip'
+        };
+
+        // Integration boundary lines
+        const lineA = {
+          x: [a, a],
+          y: [Math.min(0, ...gVals), Math.max(...fVals)],
+          mode: 'lines',
+          name: 'x = a (' + a + ')',
+          line: { color: '#e2e8f0', width: 2, dash: 'dot' }
+        };
+
+        const lineB = {
+          x: [b, b],
+          y: [Math.min(0, ...gVals), Math.max(...fVals)],
+          mode: 'lines',
+          name: 'x = b (' + b + ')',
+          line: { color: '#e2e8f0', width: 2, dash: 'dot' }
+        };
+
+        // Axis indicator trace
+        const traceAxis = {
+          x: rotationAxis === 'X' ? [plotA, plotB] : [0, 0],
+          y: rotationAxis === 'X' ? [0, 0] : [Math.min(...gVals), Math.max(...fVals)],
+          mode: 'lines',
+          name: 'Eje de rotación (' + rotationAxis + ')',
+          line: { color: '#f59e0b', width: 3, dash: 'dash' }
+        };
+
+        // Cross-section slice marker: vertical guide + points at f(sliceX)/g(sliceX)
+        const sliceTraces = [];
+        if (sliceX !== null && sliceX >= a && sliceX <= b) {
+          const fS = evalF(sliceX);
+          const gS = evalG(sliceX);
+          sliceTraces.push({
+            x: [sliceX, sliceX],
+            y: [Math.min(0, gS, fS), Math.max(gS, fS)],
+            mode: 'lines',
+            name: 'Corte x = ' + sliceX.toFixed(2),
+            line: { color: '#fbbf24', width: 3 },
+            hoverinfo: 'skip'
+          });
+          sliceTraces.push({
+            x: [sliceX, sliceX],
+            y: [fS, gS],
+            mode: 'markers',
+            marker: { color: '#fbbf24', size: 10, line: { color: '#78350f', width: 1.5 } },
+            showlegend: false,
+            hovertemplate: 'x=%{x:.3f}<br>y=%{y:.4f}<extra></extra>'
+          });
+        }
+
+        const layout = {
+          title: { text: 'Región Plana 2D y Eje de Rotación', font: { color: fontColor, size: 16 } },
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: plotBg,
+          margin: { t: 40, r: 20, l: 50, b: 50 },
+          hovermode: 'x unified',
+          xaxis: { title: 'Eje X', gridcolor: gridColor, zerolinecolor: zeroColor, zerolinewidth: 2, color: axisColor },
+          yaxis: { title: 'Eje Y', gridcolor: gridColor, zerolinecolor: zeroColor, zerolinewidth: 2, color: axisColor },
+          legend: { font: { color: axisColor }, orientation: 'h', y: -0.2 },
+          uirevision: 'region2d-view',
+          transition: { duration: 0 }
+        };
+
+        Plotly.react(plot2DRef.current, [traceRegion, traceF, traceG, lineA, lineB, traceAxis, ...sliceTraces], layout, { responsive: true, displayModeBar: false });
+      };
+
+      const renderAccumPlot = (data, theme, sliceInfo) => {
+        if (!plotAccumRef.current || !data.length) return;
+        const isLight = theme === 'light';
+        const fontColor = isLight ? '#0f172a' : '#f8fafc';
+        const axisColor = isLight ? '#334155' : '#cbd5e1';
+        const gridColor = isLight ? '#cbd5e1' : '#334155';
+        const zeroColor = isLight ? '#94a3b8' : '#64748b';
+        const plotBg = isLight ? 'rgba(226, 232, 240, 0.5)' : 'rgba(15, 23, 42, 0.6)';
+
+        const xVals = data.map(d => d.X);
+        const vVals = data.map(d => d.V_acum);
+        const finalX = xVals[xVals.length - 1];
+        const finalV = vVals[vVals.length - 1];
+
+        const trace = {
+          x: xVals,
+          y: vVals,
+          mode: 'lines',
+          name: 'V_acum(x)',
+          line: { color: '#10b981', width: 3.5 },
+          fill: 'tozeroy',
+          fillcolor: 'rgba(16, 185, 129, 0.15)',
+          hovertemplate: 'V_acum=%{y:.4f} u³<extra></extra>'
+        };
+
+        // Same cross-section slider used in the 2D/3D plots, so all three
+        // visualizations move together instead of the slider only affecting two
+        const sliceTraces = [];
+        if (sliceInfo) {
+          sliceTraces.push({
+            x: [sliceInfo.x, sliceInfo.x],
+            y: [0, sliceInfo.v],
+            mode: 'lines',
+            line: { color: '#fbbf24', width: 3 },
+            showlegend: false,
+            hoverinfo: 'skip'
+          });
+          sliceTraces.push({
+            x: [sliceInfo.x],
+            y: [sliceInfo.v],
+            mode: 'markers',
+            marker: { color: '#fbbf24', size: 10, line: { color: '#78350f', width: 1.5 } },
+            showlegend: false,
+            hovertemplate: 'V_acum(' + sliceInfo.x.toFixed(3) + ')=%{y:.4f} u³<extra></extra>'
+          });
+        }
+
+        const layout = {
+          title: { text: 'Curva de Volumen Acumulado V_acum(x)', font: { color: fontColor, size: 16 } },
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: plotBg,
+          margin: { t: 40, r: 20, l: 60, b: 50 },
+          hovermode: 'x unified',
+          xaxis: { title: 'Posición x', gridcolor: gridColor, zerolinecolor: zeroColor, color: axisColor },
+          yaxis: { title: 'Volumen Acumulado (u³)', gridcolor: gridColor, zerolinecolor: zeroColor, color: axisColor, rangemode: 'tozero' },
+          showlegend: false,
+          uirevision: 'accum-view',
+          annotations: [{
+            x: finalX, y: finalV,
+            text: 'V total ≈ ' + finalV.toFixed(4) + ' u³',
+            showarrow: true, arrowhead: 2, ax: -10, ay: -30,
+            font: { color: fontColor, size: 11 },
+            bgcolor: isLight ? 'rgba(255,255,255,0.85)' : 'rgba(15,23,42,0.85)',
+            bordercolor: '#10b981', borderwidth: 1, borderpad: 4
+          }]
+        };
+
+        Plotly.react(plotAccumRef.current, [trace, ...sliceTraces], layout, { responsive: true, displayModeBar: false });
+      };
+
+      // Concordance calculator
+      const comparisonResult = useMemo(() => {
+        if (calculatedVol === null || manualVol === '' || isNaN(parseFloat(manualVol))) {
+          return { diff: null, text: 'Ingrese un resultado manual para comparar.', status: 'info' };
+        }
+        const vSim = calculatedVol;
+        const vMan = parseFloat(manualVol);
+
+        if (Math.abs(vSim) < 1e-12) {
+          if (Math.abs(vMan) < 1e-12) {
+            return { diff: 0, text: 'Ambos resultados son cero.', status: 'success' };
+          } else {
+            return { diff: 100, text: 'Los resultados no presentan concordancia.', status: 'error' };
+          }
+        }
+
+        const diff = (Math.abs(vSim - vMan) / Math.abs(vSim)) * 100;
+        let text = '';
+        let status = 'success';
+
+        if (diff < 0.5) {
+          text = 'Los resultados presentan excelente concordancia (Diferencia < 0.5%).';
+          status = 'success';
+        } else if (diff < 2.0) {
+          text = 'Existe una diferencia pequeña (Diferencia < 2%).';
+          status = 'success';
+        } else if (diff < 5.0) {
+          text = 'Existe una diferencia moderada (Diferencia < 5%).';
+          status = 'warning';
+        } else {
+          text = 'Existe una diferencia significativa (Diferencia >= 5%).';
+          status = 'error';
+        }
+
+        return { diff: diff.toFixed(3), text, status };
+      }, [calculatedVol, manualVol]);
+
+      // Live-computed validation table (Section 13): recalculated from the
+      // actual simulator engine, not hardcoded, so it can be justified/defended
+      const validationRows = useMemo(() => {
+        return PRESETS.map(p => {
+          try {
+            const cf = math.compile(p.f);
+            const cg = math.compile(p.g);
+            const ef = (x) => cf.evaluate({ x });
+            const eg = (x) => cg.evaluate({ x });
+            let integrand;
+            if (p.metodo === 'discos') {
+              integrand = (x) => Math.PI * Math.pow(ef(x), 2);
+            } else if (p.metodo === 'arandelas') {
+              integrand = (x) => Math.PI * (Math.pow(ef(x), 2) - Math.pow(eg(x), 2));
+            } else {
+              integrand = (x) => 2 * Math.PI * x * (ef(x) - eg(x));
+            }
+            const vSim = simpsonIntegrate(integrand, p.a, p.b, 800);
+            const err = Math.abs(vSim - p.manualVol) / Math.abs(p.manualVol) * 100;
+            return { ...p, vSim, err };
+          } catch (e) {
+            return { ...p, vSim: NaN, err: NaN };
+          }
+        });
+      }, []);
+
+      const exportCSV = () => {
+        if (!sampleData.length) return;
+        let csvContent = 'data:text/csv;charset=utf-8,X,f_x,g_x,V_acum\n';
+        sampleData.forEach(row => {
+          csvContent += row.X + ',' + row.f_x + ',' + row.g_x + ',' + row.V_acum + '\n';
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'datos_solido.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      const exportTXT = () => {
+        if (!sampleData.length) return;
+        let txtContent = 'X\tf(x)\tg(x)\tV_acum\n';
+        sampleData.forEach(row => {
+          txtContent += row.X + '\t' + row.f_x + '\t' + row.g_x + '\t' + row.V_acum + '\n';
+        });
+        const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'datos_solido.txt';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          {/* Header */}
+          <header className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-5 sticky top-0 z-50">
+            <div className="max-w-[90rem] mx-auto flex flex-col md:flex-row items-center justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-500 to-sky-400 flex items-center justify-center text-slate-950 font-black text-2xl shadow-lg shadow-indigo-500/20 shrink-0">
+                  <i className="fa-solid fa-cube"></i>
+                </div>
+                <div>
+                  <h1 className="app-title-gradient text-2xl font-bold bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent leading-tight">
+                    Emulador de Sólidos de Revolución
+                  </h1>
+                  <p className="text-sm text-slate-400 font-medium mt-0.5">
+                    Universidad Mariano Gálvez de Guatemala • Cálculo II • Proyecto Final
+                  </p>
+                </div>
+              </div>
+
+              {/* Navigation Tabs */}
+              <div className="flex items-center bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60 overflow-x-auto max-w-full">
+                <button
+                  onClick={() => setActiveTab('emulator')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
+                    activeTab === 'emulator'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <i className="fa-solid fa-calculator"></i>
+                  Simulador 2D/3D
+                </button>
+                <button
+                  onClick={() => setActiveTab('validation')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
+                    activeTab === 'validation'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <i className="fa-solid fa-list-check"></i>
+                  Tabla de Validación
+                </button>
+                <button
+                  onClick={() => setActiveTab('theory')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
+                    activeTab === 'theory'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <i className="fa-solid fa-book-bookmark"></i>
+                  Guía para Defensa
+                </button>
+              </div>
+
+              {/* Theme Toggle */}
+              <button
+                type="button"
+                onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+                title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                className="w-11 h-11 shrink-0 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-slate-300 hover:text-amber-300 transition-all"
+              >
+                <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+              </button>
+            </div>
+          </header>
+
+          <main className="flex-1 max-w-[90rem] w-full mx-auto p-4 md:p-8 space-y-8">
+
+            {/* PRESET SELECTOR BANNER */}
+            <div className="glass-card rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-indigo-500/20">
+              <div className="flex items-center gap-3">
+                <i className="fa-solid fa-bolt text-amber-400 text-xl"></i>
+                <div>
+                  <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold block mb-0.5">Carga Rápida de Configuración</span>
+                  <span className="text-sm font-medium text-slate-200">Seleccione un caso de estudio del proyecto para probar instantáneamente:</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
+                {PRESETS.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => applyPreset(p.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      selectedPreset === p.id
+                        ? 'bg-indigo-500 text-white ring-2 ring-indigo-300/40 shadow'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {p.name.split('(')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* TAB: EMULATOR — kept mounted (hidden via CSS, not unmounted) when
+                switching tabs, so the three.js WebGL canvas/scene inside it
+                survives instead of being destroyed and losing its mount point */}
+            <div className={activeTab === 'emulator' ? 'grid grid-cols-1 lg:grid-cols-12 gap-8' : 'hidden'}>
+
+                {/* Left Panel: Inputs and Control */}
+                <div className="lg:col-span-4 xl:col-span-3 space-y-6">
+
+                  {/* Parameter Form */}
+                  <div className="glass-card rounded-2xl p-6 space-y-5">
+                    <div className="flex items-center justify-between border-b border-slate-700/60 pb-4">
+                      <h2 className="text-sm font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                        <i className="fa-solid fa-sliders"></i>
+                        Parámetros del Problema
+                      </h2>
+                      {selectedPreset === 'custom' ? (
+                        <span className="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono flex items-center gap-1.5">
+                          <i className="fa-solid fa-pen"></i> Personalizado
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono flex items-center gap-1.5">
+                          <i className="fa-solid fa-check"></i> Preset activo
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Function f(x) */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-300 mb-1.5">
+                        Función Superior f(x):
+                      </label>
+                      <input
+                        type="text"
+                        value={fStr}
+                        onChange={(e) => { setFStr(e.target.value); setSelectedPreset('custom'); }}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sky-300"
+                        placeholder="ej. x + 3 o sqrt(x)"
+                      />
+                    </div>
+
+                    {/* Function g(x) */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-300 mb-1.5">
+                        Función Inferior g(x):
+                      </label>
+                      <input
+                        type="text"
+                        value={gStr}
+                        onChange={(e) => { setGStr(e.target.value); setSelectedPreset('custom'); }}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 text-rose-300"
+                        placeholder="ej. x^2 + 1 o 0"
+                      />
+                    </div>
+
+                    {/* Limits a and b */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-300 mb-1.5">Límite Inferior (a):</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={aInput}
+                          onChange={(e) => { setAInput(e.target.value); setSelectedPreset('custom'); }}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-300 mb-1.5">Límite Superior (b):</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={bInput}
+                          onChange={(e) => { setBInput(e.target.value); setSelectedPreset('custom'); }}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Method Selector */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-300 mb-1.5">Método de Cálculo:</label>
+                      <select
+                        value={metodo}
+                        onChange={(e) => { handleMethodChange(e.target.value); setSelectedPreset('custom'); }}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-indigo-200"
+                      >
+                        <option value="discos">Método del Disco (Eje X)</option>
+                        <option value="arandelas">Método de Arandelas (Eje X)</option>
+                        <option value="capas">Método de Capas Cilíndricas (Eje Y)</option>
+                      </select>
+                    </div>
+
+                    {/* Axis Selector */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-300 mb-1.5">Eje de Rotación:</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          disabled={metodo === 'capas'}
+                          onClick={() => setEje('X')}
+                          className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            eje === 'X'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                              : 'bg-slate-900 text-slate-500 opacity-60'
+                          }`}
+                        >
+                          Eje X (Horizontal)
+                        </button>
+                        <button
+                          type="button"
+                          disabled={metodo === 'discos' || metodo === 'arandelas'}
+                          onClick={() => setEje('Y')}
+                          className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            eje === 'Y'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                              : 'bg-slate-900 text-slate-500 opacity-60'
+                          }`}
+                        >
+                          Eje Y (Vertical)
+                        </button>
+                      </div>
+                      <span className="text-xs text-slate-400 mt-2 block leading-relaxed">
+                        * Incompatibilidades restringidas según normativa del proyecto.
+                      </span>
+                    </div>
+
+                  </div>
+
+                  {/* Validation Banners */}
+                  {errors.length > 0 ? (
+                    <div className="glass-card rounded-2xl p-5 border border-rose-500/30 bg-rose-500/10 space-y-3">
+                      <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-wider">
+                        <i className="fa-solid fa-triangle-exclamation"></i>
+                        Errores de Validación Detectados
+                      </div>
+                      <ul className="text-sm text-rose-200 space-y-1.5 list-disc list-inside font-mono leading-relaxed">
+                        {errors.map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="glass-card rounded-2xl p-5 border border-emerald-500/30 bg-emerald-500/10 flex items-center gap-4">
+                      <div className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold shrink-0">
+                        <i className="fa-solid fa-check"></i>
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider block">Validación Exitosa</span>
+                        <span className="text-sm text-emerald-200/80">Todos los datos satisfacen las condiciones del método.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual Comparison Section */}
+                  <div className="glass-card rounded-2xl p-6 space-y-5">
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                      <i className="fa-solid fa-scale-balanced"></i>
+                      Comparación Procedimiento Manual
+                    </h2>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-300 mb-1.5">
+                        Volumen Manual (u³):
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={manualVol}
+                        onChange={(e) => setManualVol(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 text-amber-300"
+                        placeholder="ej. 73.5133"
+                      />
+                    </div>
+
+                    {calculatedVol !== null && (
+                      <div className="space-y-3 pt-3 border-t border-slate-700/60">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-400">Volumen Simulador:</span>
+                          <span className="font-mono font-bold text-sky-400">{calculatedVol.toFixed(4)} u³</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-400">Diferencia Porcentual:</span>
+                          <span className="font-mono font-bold text-amber-400">
+                            {comparisonResult.diff !== null ? `${comparisonResult.diff}%` : 'N/A'}
+                          </span>
+                        </div>
+                        <div className={`p-4 rounded-xl text-sm font-medium border leading-relaxed ${
+                          comparisonResult.status === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' :
+                          comparisonResult.status === 'warning' ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' :
+                          'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                        }`}>
+                          {comparisonResult.text}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Right Panel: Volume Summary & Visualizations */}
+                <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+
+                  {/* Volume Highlight Header Card */}
+                  <div className="glass-card rounded-2xl p-6 md:p-8 bg-gradient-to-br from-slate-900/90 via-indigo-950/40 to-slate-900/90 border border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div>
+                      <span className="text-xs uppercase tracking-wider text-indigo-400 font-bold block mb-2">
+                        Resultado Computacional Integral
+                      </span>
+                      <div className="text-5xl md:text-6xl font-black font-mono text-white tracking-tight">
+                        {calculatedVol !== null ? calculatedVol.toFixed(4) : '---'}
+                        <span className="text-2xl text-indigo-400 font-bold ml-2">u³</span>
+                      </div>
+                      <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+                        {metodo === 'discos' && ('V = π ∫ [f(x)]² dx en [' + aInput + ', ' + bInput + ']')}
+                        {metodo === 'arandelas' && ('V = π ∫ ([f(x)]² - [g(x)]²) dx en [' + aInput + ', ' + bInput + ']')}
+                        {metodo === 'capas' && ('V = 2π ∫ x (f(x) - g(x)) dx en [' + aInput + ', ' + bInput + ']')}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 w-full md:w-auto shrink-0">
+                      <button
+                        onClick={exportCSV}
+                        disabled={!sampleData.length}
+                        className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-all border border-slate-700 flex items-center justify-center gap-2 shadow disabled:opacity-40"
+                      >
+                        <i className="fa-solid fa-file-csv text-emerald-400"></i>
+                        Exportar Datos CSV
+                      </button>
+                      <button
+                        onClick={exportTXT}
+                        disabled={!sampleData.length}
+                        className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-all border border-slate-700 flex items-center justify-center gap-2 shadow disabled:opacity-40"
+                      >
+                        <i className="fa-solid fa-file-code text-sky-400"></i>
+                        Exportar Datos TXT
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3D Solid Plot — hero visualization, full width */}
+                  <div className="glass-card rounded-2xl p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-3 px-1">
+                      <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Sólido 3D · arrastra para rotar</span>
+                      <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span>f(x)
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block ml-2"></span>g(x)
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block ml-2"></span>corte
+                      </span>
+                    </div>
+
+                    {/* Interactive controls: cross-section slider + sweep animation */}
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-slate-950/40 border border-slate-800 rounded-xl p-4 mb-3">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 shrink-0 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={showSlice}
+                          onChange={(e) => setShowSlice(e.target.checked)}
+                          className="w-4 h-4 accent-amber-500"
+                        />
+                        Corte transversal
+                      </label>
+
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
+                        <input
+                          type="range"
+                          min={domainRef.current.a}
+                          max={domainRef.current.b}
+                          step={(domainRef.current.b - domainRef.current.a) / 300 || 0.01}
+                          value={sliceX !== null ? sliceX : domainRef.current.a}
+                          disabled={!showSlice || errors.length > 0}
+                          onChange={(e) => setSliceX(parseFloat(e.target.value))}
+                          className="w-full accent-amber-500 disabled:opacity-40"
+                        />
+                        <span className="text-xs font-mono text-amber-300 w-20 text-right shrink-0">
+                          x = {sliceX !== null ? sliceX.toFixed(3) : '--'}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={runSweepAnimation}
+                        disabled={isAnimating || errors.length > 0}
+                        className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-60 text-white text-xs font-semibold transition-all flex items-center justify-center gap-2 shrink-0"
+                      >
+                        <i className={`fa-solid ${isAnimating ? 'fa-spinner fa-spin' : 'fa-play'}`}></i>
+                        {isAnimating ? 'Generando…' : 'Animar generación del sólido'}
+                      </button>
+                    </div>
+
+                    {crossSectionInfo && (
+                      <div className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 mb-3 overflow-x-auto">
+                        <Tex math={crossSectionInfo.formula} />
+                      </div>
+                    )}
+
+                    <div ref={plot3DRef} className="w-full h-[38rem] md:h-[46rem]"></div>
+                  </div>
+
+                  {/* 2D Region Plot — its own full-width row, same weight as
+                      the 3D solid, instead of being squeezed next to the
+                      accumulated-volume plot */}
+                  <div className="glass-card rounded-2xl p-5">
+                    <div ref={plot2DRef} className="w-full h-[30rem] md:h-[34rem]"></div>
+                  </div>
+
+                  {/* Accumulated Volume Plot — secondary/supporting, smaller */}
+                  <div className="glass-card rounded-2xl p-5">
+                    <div ref={plotAccumRef} className="w-full h-80"></div>
+                  </div>
+
+                </div>
+
+            </div>
+
+            {/* Validation Table Tab */}
+            {activeTab === 'validation' && (
+              <div className="glass-card rounded-2xl p-6 md:p-8 space-y-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-800 pb-5">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-100">Sección 13 · Tabla de Validación del Simulador</h2>
+                    <p className="text-sm text-slate-400 mt-1">Configuraciones obligatorias calculadas en vivo por el motor del simulador y comparadas contra el procedimiento manual.</p>
+                  </div>
+                  <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold whitespace-nowrap">
+                    {validationRows.filter(r => !isNaN(r.err) && r.err < 0.5).length}/{validationRows.length} Configuraciones Validadas
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-800">
+                  <table className="w-full text-left text-sm border-collapse min-w-[820px]">
+                    <thead>
+                      <tr className="border-b border-slate-700 text-slate-400 uppercase tracking-wider text-xs font-semibold bg-slate-900/60">
+                        <th className="py-3.5 px-5">Config.</th>
+                        <th className="py-3.5 px-5">Funciones</th>
+                        <th className="py-3.5 px-5">Intervalo</th>
+                        <th className="py-3.5 px-5">Método / Eje</th>
+                        <th className="py-3.5 px-5">V. Manual (u³)</th>
+                        <th className="py-3.5 px-5">V. Simulador (u³)</th>
+                        <th className="py-3.5 px-5">Error %</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-mono text-slate-300">
+                      {validationRows.map((row, idx) => (
+                        <tr key={row.id} className={`hover:bg-slate-800/30 transition-colors ${row.id === 'main_project' ? 'bg-indigo-500/5' : ''}`}>
+                          <td className={`py-4 px-5 font-bold ${row.id === 'main_project' ? 'text-amber-400' : 'text-indigo-400'}`}>
+                            {row.id === 'main_project' ? 'Principal' : idx}
+                          </td>
+                          <td className="py-4 px-5">f(x)={row.f}, g(x)={row.g}</td>
+                          <td className="py-4 px-5">[{row.a}, {row.b}]</td>
+                          <td className="py-4 px-5 capitalize">{row.metodo} (Eje {row.eje})</td>
+                          <td className="py-4 px-5 text-amber-300">{row.manualVol.toFixed(4)}</td>
+                          <td className="py-4 px-5 text-sky-400">{isNaN(row.vSim) ? 'Error' : row.vSim.toFixed(4)}</td>
+                          <td className={`py-4 px-5 font-semibold ${isNaN(row.err) ? 'text-rose-400' : row.err < 0.5 ? 'text-emerald-400' : row.err < 2 ? 'text-amber-400' : 'text-rose-400'}`}>
+                            {isNaN(row.err) ? 'N/A' : `${row.err.toFixed(2)}%`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Theory & Defense Guide Tab */}
+            {activeTab === 'theory' && (
+              <div className="space-y-8">
+
+                {/* Main Problem Theoretical Resolution */}
+                <div className="glass-card rounded-2xl p-6 md:p-8 space-y-6">
+                  <h2 className="text-xl font-bold text-indigo-400 border-b border-slate-800 pb-4 flex items-center gap-3">
+                    <i className="fa-solid fa-square-root-variable"></i>
+                    Resolución Manual Paso a Paso - Ejercicio Principal del Proyecto
+                  </h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-300 leading-relaxed">
+                    <div className="space-y-3 bg-slate-900/60 p-5 rounded-xl border border-slate-800">
+                      <h3 className="font-bold text-sky-300 text-base">a. Puntos de Intersección</h3>
+                      <p>Igualamos las funciones y₁ = x² + 1 e y₂ = x + 3:</p>
+                      <div className="bg-slate-950 p-4 rounded text-amber-300 space-y-2">
+                        <Tex display math="x^2 + 1 = x + 3 \;\Rightarrow\; x^2 - x - 2 = 0" />
+                        <Tex display math="(x - 2)(x + 1) = 0" />
+                        <Tex display math="x_1 = -1, \quad x_2 = 2" />
+                      </div>
+                      <p>Por lo tanto, el intervalo de integración es <strong>[-1, 2]</strong>.</p>
+                    </div>
+
+                    <div className="space-y-3 bg-slate-900/60 p-5 rounded-xl border border-slate-800">
+                      <h3 className="font-bold text-sky-300 text-base">b. Función Superior e Inferior</h3>
+                      <p>Evaluamos en x = 0 perteneciente al intervalo [-1, 2]:</p>
+                      <div className="bg-slate-950 p-4 rounded text-emerald-300 space-y-2">
+                        <Tex display math="y_2(0) = 0 + 3 = 3 \quad (\text{Superior } f(x))" />
+                        <Tex display math="y_1(0) = 0^2 + 1 = 1 \quad (\text{Inferior } g(x))" />
+                      </div>
+                      <p>Así, f(x) = x + 3 y g(x) = x² + 1.</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 p-5 rounded-xl border border-slate-800 text-sm text-slate-300 space-y-3 leading-relaxed">
+                    <h3 className="font-bold text-sky-300 text-base">c y d. Deducción y Cálculo Numérico del Volumen</h3>
+                    <p>Aplicando el Método de Arandelas alrededor del eje X:</p>
+                    <div className="bg-slate-950 p-4 rounded text-indigo-300 space-y-2.5">
+                      <Tex display math="V = \pi \int_{-1}^{2} \left[ (x+3)^2 - (x^2+1)^2 \right] dx" />
+                      <Tex display math="(x+3)^2 = x^2 + 6x + 9" />
+                      <Tex display math="(x^2+1)^2 = x^4 + 2x^2 + 1" />
+                      <Tex display math="\text{Diferencia: } -x^4 - x^2 + 6x + 8" />
+                      <Tex display math="\int (-x^4 - x^2 + 6x + 8)\, dx = \left[ -\frac{x^5}{5} - \frac{x^3}{3} + 3x^2 + 8x \right]_{-1}^{2}" />
+                      <Tex display math="\text{En } x=2:\; -\frac{32}{5} - \frac{8}{3} + 12 + 16 = \frac{284}{15}" />
+                      <Tex display math="\text{En } x=-1:\; \frac{1}{5} + \frac{1}{3} + 3 - 8 = -\frac{67}{15}" />
+                      <Tex display math="V = \pi\left(\frac{284}{15} - \left(-\frac{67}{15}\right)\right) = \pi \cdot \frac{351}{15} = \frac{117\pi}{5} \approx 73.51327\ u^3" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Defense Questions Cheat Sheet */}
+                <div className="glass-card rounded-2xl p-6 md:p-8 space-y-6">
+                  <h2 className="text-xl font-bold text-amber-400 border-b border-slate-800 pb-4 flex items-center gap-3">
+                    <i className="fa-solid fa-graduation-cap"></i>
+                    Banco de Preguntas para la Defensa Individual (Sección 15)
+                  </h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+                    <div className="bg-slate-900/60 p-5 rounded-xl border border-slate-800 space-y-2.5">
+                      <span className="font-bold text-indigo-300 block">1. ¿Qué ocurre si cambiamos el eje de rotación de X a Y para Arandelas?</span>
+                      <p className="text-slate-400 leading-relaxed">
+                        El método de arandelas habitual integra con respecto a la variable perpendicular al eje de rotación. Si el eje es Y, los elementos diferenciales deben ser dy y las funciones x = f(y). Para integrar en x alrededor del eje Y, debe usarse el Método de Capas Cilíndricas.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-900/60 p-5 rounded-xl border border-slate-800 space-y-2.5">
+                      <span className="font-bold text-indigo-300 block">2. ¿Por qué V<sub>acum</sub>(x) siempre es estrictamente creciente?</span>
+                      <p className="text-slate-400 leading-relaxed">
+                        Dado que el integrando (área transversal) representa una magnitud física no negativa (cuadrados de radios o radio × altura ≥ 0), la integral acumulada ∫ A(t) dt es una función monótona no decreciente conforme x avanza de a a b.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-900/60 p-5 rounded-xl border border-slate-800 space-y-2.5">
+                      <span className="font-bold text-indigo-300 block">3. ¿Cómo se deduce el diferencial de volumen en Capas Cilíndricas?</span>
+                      <p className="text-slate-400 leading-relaxed">
+                        Una capa cilíndrica desplegada tiene un volumen <Tex math="dV = 2\pi\, r \cdot h \cdot dx" />, donde el radio de rotación es <Tex math="r = x" /> y la altura de la capa es <Tex math="h = f(x) - g(x)" />. Sumando todas las capas se llega a <Tex math="V = 2\pi \int x\,(f(x) - g(x))\, dx" />.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-900/60 p-5 rounded-xl border border-slate-800 space-y-2.5">
+                      <span className="font-bold text-indigo-300 block">4. ¿Cuál es la diferencia entre el Método de Disco y Arandelas?</span>
+                      <p className="text-slate-400 leading-relaxed">
+                        El método del disco es un caso particular del método de arandelas cuando la función inferior es g(x) = 0 (sólido macizo sin hueco central). Cuando la región no toca el eje de rotación o está acotada por dos funciones distintas de cero, se genera un hueco resultando en una arandela con radio mayor R(x) y radio menor r(x).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+          </main>
+
+          {/* Footer */}
+          <footer className="bg-slate-900 border-t border-slate-800 py-4 px-6 text-center text-xs text-slate-500">
+            <p>Universidad Mariano Gálvez de Guatemala • Facultad de Ingeniería • Curso de Cálculo II</p>
+            <p className="text-[10px] text-slate-600 mt-1">Docente: Ing. Jose Alfredo González • Desarrollado para presentación de proyecto final.</p>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
