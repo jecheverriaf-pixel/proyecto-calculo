@@ -75,6 +75,16 @@ public class MainView {
     private final Label crossSectionFormulaLabel = new Label();
     // FlowPane, not HBox: with the surface colors added the legend can be wider than the card, so it wraps.
     private final FlowPane axisLegend = new FlowPane(18, 6);
+    // Responsive layout of the simulator tab (applyResponsiveLayout).
+    private VBox leftPanel, rightPanel;
+    private final HBox wideLayout = new HBox(COLUMN_GAP);
+    private final VBox narrowLayout = new VBox(16);
+    private final VBox simContent = new VBox();
+    private final FlowPane chartsRow = new FlowPane(16, 16);
+    private final javafx.animation.PauseTransition resizeDebounce =
+            new javafx.animation.PauseTransition(javafx.util.Duration.millis(60));
+    private double lastViewportWidth = -1;
+    private boolean panelsStacked = false;
     private final ToggleButton viewSolidBtn = new ToggleButton("Sólido");
     private final ToggleButton viewWireBtn = new ToggleButton("Malla");
     private final Button animateBtn = new Button("▶  Animar generación del sólido");
@@ -111,7 +121,10 @@ public class MainView {
     }
 
     public Scene createScene() {
-        Scene scene = new Scene(root, 1440, 900);
+        // 1440 × 900 on a large monitor, but never bigger than the screen's usable
+        // area (a laptop is often 1280 × 720 once Windows scaling is applied).
+        javafx.geometry.Rectangle2D screen = javafx.stage.Screen.getPrimary().getVisualBounds();
+        Scene scene = new Scene(root, Math.min(1440, screen.getWidth()), Math.min(900, screen.getHeight()));
         scene.getStylesheets().add(getClass().getResource("/app.css").toExternalForm());
         return scene;
     }
@@ -161,20 +174,80 @@ public class MainView {
     }
 
     private Node buildSimulatorTab() {
-        VBox left = buildLeftPanel();
-        left.setPrefWidth(360);
-        left.setMinWidth(320);
+        leftPanel = buildLeftPanel();
+        leftPanel.setPrefWidth(LEFT_PANEL_WIDTH);
+        leftPanel.setMinWidth(320);
 
-        VBox right = buildRightPanel();
+        rightPanel = buildRightPanel();
+        HBox.setHgrow(rightPanel, Priority.ALWAYS);
 
-        HBox layout = new HBox(20, left, right);
-        HBox.setHgrow(right, Priority.ALWAYS);
-        layout.setPadding(new Insets(18));
+        wideLayout.getChildren().setAll(leftPanel, rightPanel);
+        simContent.getChildren().setAll(wideLayout);
+        simContent.setPadding(new Insets(PAGE_PADDING));
 
-        ScrollPane scroll = new ScrollPane(layout);
+        ScrollPane scroll = new ScrollPane(simContent);
         scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); // the content is sized to always fit the width
         scroll.getStyleClass().add("edge-to-edge");
+        // Re-fit the 3D view and charts to the visible width. Debounced: dragging
+        // the window edge fires dozens of viewport changes per second.
+        resizeDebounce.setOnFinished(e -> applyResponsiveLayout(scroll.getViewportBounds().getWidth()));
+        scroll.viewportBoundsProperty().addListener((o, ov, nv) -> resizeDebounce.playFromStart());
         return scroll;
+    }
+
+    // ------------------------------------------------------------ responsive
+
+    private static final double LEFT_PANEL_WIDTH = 360;
+    private static final double PAGE_PADDING = 18;
+    private static final double COLUMN_GAP = 20;
+    private static final double CARD_INSET = 2 * 18 + 2;      // .card padding on both sides + its 1px border
+    private static final double STACK_PANELS_BELOW = 1000;    // narrower than this: parameters go above the views
+    private static final double MIN_CHART_WIDTH = 300;
+
+    /**
+     * Fits the 3D view and the two charts to the scroll viewport's width (a laptop at
+     * 1280 px, or 1920 px with Windows scaling at 150 %, is far narrower than the old
+     * fixed 1440 px layout). Below STACK_PANELS_BELOW the parameters panel moves above
+     * the views, and the two charts stack when they no longer fit side by side.
+     */
+    private void applyResponsiveLayout(double viewportWidth) {
+        if (viewportWidth <= 0 || Math.abs(viewportWidth - lastViewportWidth) < 2) return;
+        lastViewportWidth = viewportWidth;
+
+        boolean stack = viewportWidth < STACK_PANELS_BELOW;
+        if (stack != panelsStacked) {
+            panelsStacked = stack;
+            wideLayout.getChildren().clear();
+            narrowLayout.getChildren().clear();
+            (stack ? narrowLayout : wideLayout).getChildren().setAll(leftPanel, rightPanel);
+            simContent.getChildren().setAll(stack ? narrowLayout : wideLayout);
+        }
+
+        // − 4: a few pixels of slack so rounding never makes the content 1 px wider than the viewport.
+        double rightWidth = viewportWidth - 2 * PAGE_PADDING - (stack ? 0 : LEFT_PANEL_WIDTH + COLUMN_GAP) - 4;
+        double inner = rightWidth - CARD_INSET;
+
+        double solidWidth = clamp(inner, 300, 1300);
+        solid3D.setSize(solidWidth, clamp(solidWidth * 0.55, 280, 560));
+
+        double gap = chartsRow.getHgap();
+        boolean sideBySide = (rightWidth - gap) / 2 - CARD_INSET >= MIN_CHART_WIDTH;
+        double chartWidth = sideBySide ? (rightWidth - gap) / 2 - CARD_INSET : inner;
+        double chartHeight = clamp(chartWidth * 0.8, 240, 420);
+        for (javafx.scene.canvas.Canvas c : List.of(region2D, accumCanvas)) {
+            c.setWidth(chartWidth);
+            c.setHeight(chartHeight);
+        }
+        chartsRow.setPrefWrapLength(rightWidth);
+
+        // Resizing clears a Canvas; redraw everything at the new size (the guided
+        // mode redraws on its own next step).
+        if (guidedStep == 0) refreshSliceViews();
+    }
+
+    private static double clamp(double v, double min, double max) {
+        return Math.max(min, Math.min(max, v));
     }
 
     private VBox buildLeftPanel() {
@@ -376,9 +449,13 @@ public class MainView {
         halfCutCheck.setTooltip(new Tooltip(
                 "Muestra solo media vuelta del sólido para ver su perfil por dentro: la región R (azul) es la misma de la gráfica 2D, " +
                 "f(x) forma la superficie exterior y g(x) el hueco interior."));
-        HBox sliceControls = new HBox(14, showSliceCheck, halfCutCheck, sliceSlider, sliceValueLabel, animateBtn, resetViewBtn);
+        // FlowPane, not HBox: on a laptop-width window the controls wrap to a second
+        // row instead of being cut off at the card's edge.
+        sliceSlider.setPrefWidth(220);
+        HBox sliderGroup = new HBox(10, sliceSlider, sliceValueLabel);
+        sliderGroup.setAlignment(Pos.CENTER_LEFT);
+        FlowPane sliceControls = new FlowPane(14, 10, showSliceCheck, halfCutCheck, sliderGroup, animateBtn, resetViewBtn);
         sliceControls.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(sliceSlider, Priority.ALWAYS);
         sliceControls.getStyleClass().add("control-bar");
 
         crossSectionFormulaLabel.getStyleClass().add("formula-box");
@@ -386,11 +463,10 @@ public class MainView {
         crossSectionFormulaLabel.setVisible(false);
         crossSectionFormulaLabel.setManaged(false);
 
-        // Fixed sizes on purpose: binding a Canvas/SubScene's width to its own
-        // containing card's width creates a circular layout dependency in
-        // JavaFX (the card's preferred size is partly derived from this same
-        // child), which made both the 3D view and the charts grow without
-        // bound on every layout pass. A fixed size sidesteps that entirely.
+        // Sizes are never bound to the card itself: the card's preferred size is
+        // partly derived from this same child, and that loop made the 3D view and
+        // the charts grow without bound. They are set instead from the scroll
+        // viewport's width (applyResponsiveLayout), which does not depend on them.
         StackPane solidHolder = new StackPane(solid3D.getNode());
         solidHolder.getStyleClass().add("solid-holder");
         solidHolder.setMinSize(StackPane.USE_PREF_SIZE, StackPane.USE_PREF_SIZE);
@@ -398,17 +474,15 @@ public class MainView {
 
         solidCard.getChildren().addAll(solidHeader, axisLegend, sliceControls, crossSectionFormulaLabel, solidHolder);
 
-        // Side by side (not stacked) so the two supporting charts together
-        // take the same vertical space as one — cuts how far the page scrolls
-        // to see everything, instead of Resultado → 3D → 2D → Acumulado all
-        // piled in one long column.
+        // Side by side when there is room, so the two supporting charts take the
+        // vertical space of one; on a narrow window the FlowPane stacks them.
         VBox region2DCard = card();
         region2DCard.getChildren().addAll(sectionTitle("Región Plana 2D y Eje de Rotación"), region2D);
 
         VBox accumCard = card();
         accumCard.getChildren().addAll(sectionTitle("Volumen Acumulado V_acum(x)"), accumCanvas);
 
-        HBox chartsRow = new HBox(16, region2DCard, accumCard);
+        chartsRow.getChildren().setAll(region2DCard, accumCard);
 
         VBox column = new VBox(16, guidedCard, resultCard, solidCard, chartsRow);
         return column;

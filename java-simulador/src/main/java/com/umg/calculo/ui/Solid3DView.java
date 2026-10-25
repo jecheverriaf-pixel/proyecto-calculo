@@ -186,6 +186,16 @@ public class Solid3DView {
         return root;
     }
 
+    /** Resizes the view (MainView fits it to the window width); the camera keeps its framing. */
+    public void setSize(double width, double height) {
+        subScene.setWidth(width);
+        subScene.setHeight(height);
+        overlay.setPrefSize(width, height);
+        root.setPrefSize(width, height);
+        root.setMaxSize(width, height);
+        Platform.runLater(this::refreshOverlay);
+    }
+
     private PointLight keyLight() {
         PointLight light = new PointLight(Color.color(1, 1, 1, 0.9));
         light.setTranslateX(8);
